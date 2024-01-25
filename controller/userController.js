@@ -37,7 +37,6 @@ class UserController {
     }
 
     static addUser(req, res, next) {
-        console.log("Test");
         const body = req.body
         const newUser = {
             firstName : body.firstName,
@@ -45,9 +44,9 @@ class UserController {
             email : body.email
         }
 
-        Product.create(newUser)
-            .then((product) => {
-                res.status(201).json({product, message: "New User Added"})
+        User.create(newUser)
+            .then((result) => {
+                res.status(201).json({result, message: "New User Added"})
             })
             .catch((err) => {
                 next({
