@@ -9,6 +9,7 @@ const app = express()
 const router = require('./routes/index')
 const errorHandler = require('./middlewares/errorHandler')
 
+
 app.use(express.urlencoded({extended:true}))
 app.use(express.json())
 

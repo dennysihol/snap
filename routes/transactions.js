@@ -1,8 +1,10 @@
 var express = require('express');
 const TransactionController = require('../controller/transactionController');
-var router = express.Router();
+const router = express.Router();
+const { authenticateToken } = require('../middlewares/authentication');
 
 /* GET users listing. */
-router.get('/va/bills', TransactionController.showTransaction)
+// router.get('/va/bills',authenticateToken , TransactionController.showTransaction);
+router.post('/va/bills', TransactionController.showTransaction);
 
 module.exports = router;
