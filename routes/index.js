@@ -1,12 +1,12 @@
 const express = require('express')
 const router = express.Router()
-const userRouter = require('./users')
 const transactionRouter = require('./transactions')
 const paymentRouter = require('./payments')
+const { generateToken, authenticateToken } = require('../middlewares/authentication');
 
 
-router.use(userRouter)
-router.use(transactionRouter)
-router.use(paymentRouter)
+router.use('/api/v1/token', generateToken)
+router.use(authenticateToken, transactionRouter)
+router.use(authenticateToken, paymentRouter)
 
 module.exports = router
