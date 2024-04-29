@@ -29,7 +29,7 @@ module.exports = (sequelize, DataTypes) => {
     AdditionalData: DataTypes.STRING
   }, {
     sequelize,
-    modelName: 'Payments',
+    modelName: 'bca_payments',
   });
   return Payments;
 };

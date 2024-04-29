@@ -1,4 +1,4 @@
-const { Transaction } = require ('../models/index')
+const { bca_transactions } = require ('../models/index')
 
 class TransactionController {
 
@@ -13,7 +13,7 @@ class TransactionController {
                 const { CompanyCode, CustomerNumber, RequestID } = req.body;
             
                 // Use Sequelize findOne
-                const existingEntry = await Transaction.findOne({
+                const existingEntry = await bca_transactions.findOne({
                   where: {
                     CompanyCode : CompanyCode,
                     CustomerNumber: CustomerNumber,

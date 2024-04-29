@@ -1,4 +1,4 @@
-const { Payments } = require ('../models/index')
+const { bca_payments } = require ('../models/index')
 
 class PaymentController {
 
@@ -13,7 +13,7 @@ class PaymentController {
                 const { CompanyCode, CustomerNumber, RequestID } = req.body;
             
                 // Use Sequelize findOne
-                const existingEntry = await Payments.findOne({
+                const existingEntry = await bca_payments.findOne({
                   where: {
                     CompanyCode : CompanyCode,
                     CustomerNumber: CustomerNumber,

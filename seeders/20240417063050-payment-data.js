@@ -1,7 +1,7 @@
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.bulkInsert('payments', [{
+    return queryInterface.bulkInsert('bca_payments', [{
       CompanyCode: "12345",
       CustomerNumber: "ABC0012300DEF",
       RequestID: "201507131507262221400000001975",
@@ -51,7 +51,7 @@ module.exports = {
     }], {});
   },
   down: (queryInterface, Sequelize) => {
-    return queryInterface.bulkDelete('payments', null, {});
+    return queryInterface.bulkDelete('bca_payments', null, {});
   }
 };
 
