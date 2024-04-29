@@ -1,9 +1,9 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-
+require('dotenv').config();
 
 const clientCredentials = {
-  pinjam_duit_snap_bca : bcrypt.hashSync('snap_bca_pinjamDuit', 10),
+  [process.env.CLIENT_ID] : bcrypt.hashSync(process.env.CLIENT_SECRET, 10),
 };
 
 function generateToken (req, res) {
@@ -21,7 +21,7 @@ function generateToken (req, res) {
       // Add other claims as needed (e.g., roles, permissions)
     };
 
-    const token = jwt.sign(payload, 'snap_bca_pinjamDuit', {
+    const token = jwt.sign(payload, process.env.CLIENT_SECRET, {
       expiresIn: 3600, // Token expires in 1 hour
     });
 
@@ -44,7 +44,7 @@ function authenticateToken(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, 'snap_bca_pinjamDuit');
+    const decoded = jwt.verify(token, process.env.CLIENT_SECRET);
     req.user = decoded; // Attach the decoded payload to the request
     next(); // Proceed to the actual route handler
   } catch (err) {
