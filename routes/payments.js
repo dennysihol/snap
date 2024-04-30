@@ -1,4 +1,4 @@
-var express = require('express');
+const express = require('express');
 const PaymentController = require('../controller/paymentsController');
 const router = express.Router();
 
