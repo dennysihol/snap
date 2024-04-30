@@ -3,12 +3,7 @@ const { bca_payments } = require ('../models/index')
 class PaymentController {
 
     static async showPayments(req, res, next){
-        // Transaction.findAll()
-        //     .then((result) => {
-        //         res.status(200).json({result})
-        //     }).catch((err) => {
-        //         next(err)
-        //     });
+
             try {
                 const { CompanyCode, CustomerNumber, RequestID } = req.body;
             

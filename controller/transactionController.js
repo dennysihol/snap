@@ -3,12 +3,7 @@ const { bca_transactions } = require ('../models/index')
 class TransactionController {
 
     static async showTransaction(req, res, next){
-        // Transaction.findAll()
-        //     .then((result) => {
-        //         res.status(200).json({result})
-        //     }).catch((err) => {
-        //         next(err)
-        //     });
+
             try {
                 const { CompanyCode, CustomerNumber, RequestID, TransactionDate } = req.body;
             
