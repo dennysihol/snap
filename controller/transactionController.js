@@ -10,14 +10,15 @@ class TransactionController {
         //         next(err)
         //     });
             try {
-                const { CompanyCode, CustomerNumber, RequestID } = req.body;
+                const { CompanyCode, CustomerNumber, RequestID, TransactionDate } = req.body;
             
                 // Use Sequelize findOne
                 const existingEntry = await bca_transactions.findOne({
                   where: {
                     CompanyCode : CompanyCode,
                     CustomerNumber: CustomerNumber,
-                    RequestID: RequestID
+                    RequestID: RequestID,
+                    TransactionDate : TransactionDate
                   }
                 });
             
