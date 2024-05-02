@@ -47,10 +47,6 @@ module.exports = {
           len: [1, 3]
         }
       },
-      TotalAmount: {
-        type: Sequelize.STRING,
-        allowNull: false,
-      },
       SubCompany: {
         type: Sequelize.STRING,
         allowNull: false,

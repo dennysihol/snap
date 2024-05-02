@@ -20,7 +20,6 @@ module.exports = (sequelize, DataTypes) => {
       InquiryReason: DataTypes.JSON,
       CustomerName: DataTypes.STRING,
       CurrencyCode: DataTypes.STRING,
-      TotalAmount: DataTypes.STRING,
       SubCompany: DataTypes.STRING,
       DetailBills: DataTypes.STRING,
       FreeTexts: DataTypes.STRING,
