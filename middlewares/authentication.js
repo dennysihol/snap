@@ -8,7 +8,6 @@ const publicKey = fs.readFileSync("./public-key.pem");
 const privateKey = fs.readFileSync("./private-key.pem");
 
 function generateToken(req, res) {
-  console.log("test jalan ga?");
   const { grantType } = req.body;
   const timestamp = req.header("X-TIMESTAMP");
   const clientId = req.header("X-CLIENT-KEY");
@@ -25,12 +24,14 @@ function generateToken(req, res) {
   // 2. Construct StringToSign for Signature Verification
   const StringToSign = `${clientId}|${timestamp}`;
 
+  const sign = crypto.sign('RSA-SHA256', StringToSign, privateKey).toString("base64");
+
   // 3. Verify Signature
   const verify = crypto.verify(
     "RSA-SHA256",
     StringToSign,
     publicKey,
-    Buffer.from(signature, "base64")
+    Buffer.from(sign, "base64")
   );
 
   if (!verify) {
