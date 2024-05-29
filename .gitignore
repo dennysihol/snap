@@ -1,3 +1,5 @@
 node_modules
 .env
 .scannerwork
+private-key.pem
+public-key.pem

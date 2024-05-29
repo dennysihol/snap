@@ -1,55 +1,81 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-require('dotenv').config();
+const jwt = require("jsonwebtoken");
+const crypto = require("node:crypto");
+require("dotenv").config();
+const fs = require("fs");
 
-const clientCredentials = {
-  [process.env.CLIENT_ID] : bcrypt.hashSync(process.env.CLIENT_SECRET, 10),
-};
+const VALID_CLIENT_ID = process.env.CLIENT_ID; // Allowed client IDs
+const publicKey = fs.readFileSync("./public-key.pem");
+const privateKey = fs.readFileSync("./private-key.pem");
 
-function generateToken (req, res) {
-  const { client_id, client_secret } = req.body;
+function generateToken(req, res) {
+  console.log("test jalan ga?");
+  const { grantType } = req.body;
+  const timestamp = req.header("X-TIMESTAMP");
+  const clientId = req.header("X-CLIENT-KEY");
+  const signature = req.header("X-SIGNATURE");
 
-  if (!client_id || !client_secret) {
-    return res.status(400).json({ error: 'Client ID and secret are required' });
+  // 1. Validate Request Headers & Client ID
+  if (!timestamp || !clientId || !signature) {
+    return res.status(400).json({ error: "Missing required headers" });
+  }
+  if (!VALID_CLIENT_ID.includes(clientId)) {
+    return res.status(401).json({ error: "Invalid client ID" });
   }
 
-  const storedHash = clientCredentials[client_id];
-  if (storedHash && bcrypt.compareSync(client_secret, storedHash)) {
-    const payload = {
-      iss: 'your_api_server', 
-      sub: client_id, // Optional: Add client_id as the subject of the token
-      // Add other claims as needed (e.g., roles, permissions)
-    };
+  // 2. Construct StringToSign for Signature Verification
+  const StringToSign = `${clientId}|${timestamp}`;
 
-    const token = jwt.sign(payload, process.env.CLIENT_SECRET, {
-      expiresIn: 3600, // Token expires in 1 hour
-    });
+  // 3. Verify Signature
+  const verify = crypto.verify(
+    "RSA-SHA256",
+    StringToSign,
+    publicKey,
+    Buffer.from(signature, "base64")
+  );
 
-    res.json({
-      access_token: token,
-      token_type: 'Bearer',
-      expires_in: 3600,
-    });
-  } else {
-    res.status(401).json({ error: 'Invalid credentials' });
+  if (!verify) {
+    return res.status(401).json({ error: "Invalid signature" });
   }
+
+  // 4. Generate JWT Token (Your Logic)
+  const payload = {
+    iss: "your_api_server",
+    sub: clientId, // Optional: Add client_id as the subject
+  };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: 900, // 1 hour (Adjust as needed)
+  });
+
+  res.json({
+    responseCode: "2007300",
+    responseMessage: "Successful",
+    accessToken: token,
+    tokenType: "Bearer",
+    expiresIn: 900,
+  });
 }
 
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Extract token from 'Bearer <token>' format
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1]; // Extract token from 'Bearer <token>' format
 
   if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
+    return res.status(401).json({ error: "Access token required" });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.CLIENT_SECRET);
+    // Verify with the public key, assuming RS256 signing
+    const decoded = crypto.verify('RSA-SHA256', token, publicKey, Buffer.from(token, "base64"));
     req.user = decoded; // Attach the decoded payload to the request
-    next(); // Proceed to the actual route handler
+    next();
   } catch (err) {
-    res.status(403).json({ error: 'Invalid access token' });
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Access token expired" });
+    } else {
+      console.error("Error verifying token:", err); // Log the error for debugging
+      return res.status(403).json({ error: "Invalid access token" });
+    }
   }
 }
 
-  module.exports = {generateToken, authenticateToken}
+module.exports = { generateToken, authenticateToken };
