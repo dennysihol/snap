@@ -17,14 +17,19 @@ function generateToken(req, res) {
   if (!timestamp || !clientId || !signature) {
     return res.status(400).json({ error: "Missing required headers" });
   }
-  if (!VALID_CLIENT_ID.includes(clientId)) {
+  if (clientId !== VALID_CLIENT_ID) {
     return res.status(401).json({ error: "Invalid client ID" });
   }
 
   // 2. Construct StringToSign for Signature Verification
   const StringToSign = `${clientId}|${timestamp}`;
+  console.log(StringToSign);
 
   const sign = crypto.sign('RSA-SHA256', StringToSign, privateKey).toString("base64");
+
+  if (signature !== sign) {
+    return res.status(401).json({ error: "Invalid signature" });
+  }
 
   // 3. Verify Signature
   const verify = crypto.verify(
