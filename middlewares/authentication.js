@@ -1,85 +1,89 @@
 const jwt = require("jsonwebtoken");
-const crypto = require("node:crypto");
 require("dotenv").config();
 const fs = require("fs");
+const moment = require('moment');
 
-const VALID_CLIENT_ID = process.env.CLIENT_ID; // Allowed client IDs
-const publicKey = fs.readFileSync("./public-key.pem");
-const privateKey = fs.readFileSync("./private-key.pem");
+const VALID_CLIENT_ID = process.env.CLIENT_ID; 
+const publicKey = fs.readFileSync("./public-key.pem", 'utf8');
+const privateKey = fs.readFileSync("./private-key.pem", 'utf8');
 
 function generateToken(req, res) {
-  const { grantType } = req.body;
-  const timestamp = req.header("X-TIMESTAMP");
-  const clientId = req.header("X-CLIENT-KEY");
-  const signature = req.header("X-SIGNATURE");
+    const { grantType } = req.body;
+    const timestamp = req.header("X-TIMESTAMP"); // In ISO 8601 format
+    const clientId = req.header("X-CLIENT-KEY");
+    const signature = req.header("X-SIGNATURE");
 
-  // 1. Validate Request Headers & Client ID
-  if (!timestamp || !clientId || !signature) {
-    return res.status(400).json({ error: "Missing required headers" });
-  }
-  if (clientId !== VALID_CLIENT_ID) {
-    return res.status(401).json({ error: "Invalid client ID" });
-  }
+    // 1. Validate Request Headers & Client ID
+    if (!timestamp || !clientId || !signature) {
+        return res.status(400).json({ error: "Missing required headers" });
+    }
+    if (clientId !== VALID_CLIENT_ID) {
+        return res.status(401).json({ error: "Invalid client ID" });
+    }
 
-  // 2. Construct StringToSign for Signature Verification
-  const StringToSign = `${clientId}|${timestamp}`;
-  console.log(StringToSign);
+    // 2. Validate Timestamp
+    const now = moment();
+    const oneHourAgo = now.clone().subtract(1, 'hour');
+    const requestTime = moment(timestamp);
 
-  const sign = crypto.sign('RSA-SHA256', StringToSign, privateKey).toString("base64");
+    if (!requestTime.isValid()) {
+        return res.status(400).json({ error: "Invalid timestamp format" });
+    }
 
-  if (signature !== sign) {
-    return res.status(401).json({ error: "Invalid signature" });
-  }
+    if (requestTime.isBefore(oneHourAgo) || requestTime.isAfter(now)) {
+        return res.status(401).json({ error: "Timestamp out of range" });
+    }
 
-  // 3. Verify Signature
-  const verify = crypto.verify(
-    "RSA-SHA256",
-    StringToSign,
-    publicKey,
-    Buffer.from(sign, "base64")
-  );
+    const StringToSign = `${clientId}|${timestamp}`;
 
-  if (!verify) {
-    return res.status(401).json({ error: "Invalid signature" });
-  }
+    const xSignature = jwt.sign(StringToSign, privateKey, { algorithm: 'RS256' });
+    console.log("JWT generated:", xSignature);
 
-  // 4. Generate JWT Token (Your Logic)
-  const payload = {
-    iss: "your_api_server",
-    sub: clientId, // Optional: Add client_id as the subject
-  };
-  const token = jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: 900, // 1 hour (Adjust as needed)
-  });
+    if(xSignature !== signature) {
+        return res.status(401).json({ error: "Invalid signature" });
+    }
 
-  res.json({
-    responseCode: "2007300",
-    responseMessage: "Successful",
-    accessToken: token,
-    tokenType: "Bearer",
-    expiresIn: 900,
-  });
+    // 4. Generate JWT Token
+    const payload = {
+        iss: "your_api_server",
+        sub: clientId,
+        iat: Math.floor(Date.now() / 1000), 
+    };
+
+    const token = jwt.sign(payload, privateKey, {
+        algorithm: "RS256",
+        expiresIn: 3600, 
+    });
+
+    res.json({
+        responseCode: "2007300",
+        responseMessage: "Successful",
+        accessToken: token,
+        tokenType: "Bearer",
+        expiresIn: 3600,
+    });
 }
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Extract token from 'Bearer <token>' format
+  const token = authHeader && authHeader.split(" ")[1]; // Extract token from 'Bearer <token>'
 
   if (!token) {
     return res.status(401).json({ error: "Access token required" });
   }
 
   try {
-    // Verify with the public key, assuming RS256 signing
-    const decoded = crypto.verify('RSA-SHA256', token, publicKey, Buffer.from(token, "base64"));
-    req.user = decoded; // Attach the decoded payload to the request
+    const decoded = jwt.verify(token, publicKey, { algorithms: ["RS256"] });
+    req.user = decoded; 
     next();
   } catch (err) {
     if (err.name === "TokenExpiredError") {
       return res.status(401).json({ error: "Access token expired" });
-    } else {
-      console.error("Error verifying token:", err); // Log the error for debugging
+    } else if (err.name === "JsonWebTokenError") {
       return res.status(403).json({ error: "Invalid access token" });
+    } else {
+      console.error("Error verifying token:", err); 
+      return res.status(500).json({ error: "Internal Server Error" });
     }
   }
 }
