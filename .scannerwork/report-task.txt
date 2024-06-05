@@ -1,6 +1,0 @@
-projectKey=snap
-serverUrl=http://localhost:9000
-serverVersion=10.5.0.89998
-dashboardUrl=http://localhost:9000/dashboard?id=snap
-ceTaskId=386762fd-ba19-4a36-b60d-22e76550d6a2
-ceTaskUrl=http://localhost:9000/api/ce/task?id=386762fd-ba19-4a36-b60d-22e76550d6a2
