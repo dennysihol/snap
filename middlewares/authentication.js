@@ -16,23 +16,23 @@ function generateToken(req, res) {
 
   // 1. Validate Request Headers & Client ID
   if (!timestamp || !clientId || !signature) {
-    return res.status(400).json({ error: "Missing required headers" });
+    return res.status(400).json({ errorCode : 4007301, message: "Invalid field format [clientId/clientSecret/grantType/X-TIMESTAMP]"}); 
   }
   if (clientId !== VALID_CLIENT_ID) {
-    return res.status(401).json({ error: "Invalid client ID" });
+    return res.status(401).json({ errorCode : 4007300, message: "Unauthorized. [Unknown Client]" });
   }
 
   // 2. Validate Timestamp
   const now = moment();
   const oneHourAgo = now.clone().subtract(1, "hour");
-  const requestTime = moment(timestamp);
+  const requestTime = moment(timestamp, moment.ISO_8601, true);
 
   if (!requestTime.isValid()) {
-    return res.status(400).json({ error: "Invalid timestamp format" });
+    return res.status(400).json({ errorCode : 4007301, message: "Invalid field format [X-TIMESTAMP]" });
   }
 
   if (requestTime.isBefore(oneHourAgo) || requestTime.isAfter(now)) {
-    return res.status(401).json({ error: "Timestamp out of range" });
+    return res.status(401).json({ errorCode : 4007301, message: "Invalid field format [X-TIMESTAMP]" });
   }
 
 
@@ -41,10 +41,14 @@ function generateToken(req, res) {
     const verified = jwt.verify(signature, publicKeyBCA, {
       algorithms: ["RS256"]
     });
-    console.log('verified', verified);
+    
+    if (!verified) {
+      return res.status(401).json({ errorCode : 4007300, message: "Unauthorized. [Connection not Allowed]" });
+    }
+
   } catch (err) {
     console.log(err);
-    return res.status(401).json({ error: "Invalid signature" });
+    return res.status(401).json({ errorCode : 4007300, message: "Unauthorized. [Signature]" });
   }
 
 
@@ -55,7 +59,6 @@ function generateToken(req, res) {
     sub: clientId,
     iat: Math.floor(Date.now() / 1000), // issued at claim (current time in seconds)
   };
-  console.log('payload',payload);
 
   const token = jwt.sign(payload, privateKey, {
     algorithm: "RS256",
