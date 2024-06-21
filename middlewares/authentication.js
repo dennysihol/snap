@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const fs = require("fs");
 const moment = require("moment");
+const crypto = require("crypto");
 
 const VALID_CLIENT_ID = process.env.CLIENT_ID;
 const publicKey = fs.readFileSync("./publicKey.pem", "utf8");
@@ -16,10 +17,17 @@ function generateToken(req, res) {
 
   // 1. Validate Request Headers & Client ID
   if (!timestamp || !clientId || !signature) {
-    return res.status(400).json({ errorCode : 4007301, message: "Invalid field format [clientId/clientSecret/grantType/X-TIMESTAMP]"}); 
+    return res.status(400).json({
+      responseCode: 4007301,
+      responseMessage:
+        "Invalid field format [clientId/clientSecret/grantType/X-TIMESTAMP]",
+    });
   }
   if (clientId !== VALID_CLIENT_ID) {
-    return res.status(401).json({ errorCode : 4007300, message: "Unauthorized. [Unknown Client]" });
+    return res.status(401).json({
+      responseCode: 4007300,
+      responseMessage: "Unauthorized. [Unknown Client]",
+    });
   }
 
   // 2. Validate Timestamp
@@ -28,50 +36,74 @@ function generateToken(req, res) {
   const requestTime = moment(timestamp, moment.ISO_8601, true);
 
   if (!requestTime.isValid()) {
-    return res.status(400).json({ errorCode : 4007301, message: "Invalid field format [X-TIMESTAMP]" });
+    return res.status(400).json({
+      responseCode: 4007301,
+      responseMessage: "Invalid field format [X-TIMESTAMP]",
+    });
   }
 
   if (requestTime.isBefore(oneHourAgo) || requestTime.isAfter(now)) {
-    return res.status(401).json({ errorCode : 4007301, message: "Invalid field format [X-TIMESTAMP]" });
+    return res.status(401).json({
+      responseCode: 4007301,
+      responseMessage: "Invalid field format [X-TIMESTAMP]",
+    });
   }
-
 
   // 4. Verify Signature
   try {
-    const verified = jwt.verify(signature, publicKeyBCA, {
-      algorithms: ["RS256"]
-    });
-    
-    if (!verified) {
-      return res.status(401).json({ errorCode : 4007300, message: "Unauthorized. [Connection not Allowed]" });
-    }
+    // const verified = jwt.verify(signature, publicKeyBCA, {
+    //   algorithms: ["RS256"]
+    // });
+    const StringToSign = `${clientId}|${timestamp}`;
+    const verified = crypto.verify(
+      "RSA-SHA256",
+      StringToSign,
+      publicKeyBCA,
+      Buffer.from(signature, "base64")
+    );
 
+    if (!verified) {
+      return res.status(401).json({
+        responseCode: 4007300,
+        responseMessage: "Unauthorized. [Connection not Allowed]",
+      });
+    } else {
+      const payload = {
+        iss: "https://api-test.pinjamduit.co.id",
+        sub: clientId,
+        iat: Math.floor(Date.now() / 1000), // issued at claim (current time in seconds)
+      };
+
+    
+      // const token = jwt.sign(payload, privateKey, {
+      //   algorithm: "RS256",
+      //   expiresIn: 3600, // 1 hour
+      // });
+
+      const dataBuffer = Buffer.from(JSON.stringify(payload), 'utf8');
+    
+      const token = crypto
+        .sign("RSA-SHA256", dataBuffer, privateKey)
+        .toString("base64");
+    
+      res.json({
+        responseCode: "2007300",
+        responseMessage: "Successful",
+        accessToken: token,
+        tokenType: "Bearer",
+        expiresIn: 3600,
+      });
+    }
   } catch (err) {
     console.log(err);
-    return res.status(401).json({ errorCode : 4007300, message: "Unauthorized. [Signature]" });
+    return res.status(401).json({
+      responseCode: 4007300,
+      responseMessage: "Unauthorized. [Signature]",
+    });
   }
 
-
-
   // 5. Generate and Return JWT Token
-  const payload = {
-    iss: "https://api-test.pinjamduit.co.id",
-    sub: clientId,
-    iat: Math.floor(Date.now() / 1000), // issued at claim (current time in seconds)
-  };
-
-  const token = jwt.sign(payload, privateKey, {
-    algorithm: "RS256",
-    expiresIn: 3600, // 1 hour
-  });
-
-  res.json({
-    responseCode: "2007300",
-    responseMessage: "Successful",
-    accessToken: token,
-    tokenType: "Bearer",
-    expiresIn: 3600,
-  });
+  
 }
 
 function authenticateToken(req, res, next) {
@@ -80,7 +112,7 @@ function authenticateToken(req, res, next) {
   console.log(token);
 
   if (!token) {
-    return res.status(401).json({ error: "Access token required" });
+    return res.status(401).json({ responseMessage: "Access token required" });
   }
 
   try {
@@ -89,12 +121,12 @@ function authenticateToken(req, res, next) {
     next();
   } catch (err) {
     if (err.name === "TokenExpiredError") {
-      return res.status(401).json({ error: "Access token expired" });
+      return res.status(401).json({ responseMessage: "Access token expired" });
     } else if (err.name === "JsonWebTokenError") {
-      return res.status(403).json({ error: "Invalid access token" });
+      return res.status(403).json({ responseMessage: "Invalid access token" });
     } else {
       console.error("Error verifying token:", err);
-      return res.status(500).json({ error: "Internal Server Error" });
+      return res.status(500).json({ responseMessage: "Internal Server Error" });
     }
   }
 }
