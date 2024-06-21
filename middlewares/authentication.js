@@ -9,11 +9,15 @@ const publicKey = fs.readFileSync("./publicKey.pem", "utf8");
 const privateKey = fs.readFileSync("./privateKey.pem", "utf8");
 const publicKeyBCA = fs.readFileSync("./publicKeyBCA.pem", "utf8");
 
+
+
 function generateToken(req, res) {
   const { grantType } = req.body;
   const timestamp = req.header("X-TIMESTAMP"); // In ISO 8601 format
   const clientId = req.header("X-CLIENT-KEY");
   const signature = req.header("X-SIGNATURE");
+
+  const StringToSign = `${clientId}|${timestamp}`;  
 
   // 1. Validate Request Headers & Client ID
   if (!timestamp || !clientId || !signature) {
@@ -54,7 +58,7 @@ function generateToken(req, res) {
     // const verified = jwt.verify(signature, publicKeyBCA, {
     //   algorithms: ["RS256"]
     // });
-    const StringToSign = `${clientId}|${timestamp}`;
+    
     const verified = crypto.verify(
       "RSA-SHA256",
       StringToSign,
@@ -67,24 +71,13 @@ function generateToken(req, res) {
         responseCode: 4007300,
         responseMessage: "Unauthorized. [Connection not Allowed]",
       });
-    } else {
-      const payload = {
-        iss: "https://api-test.pinjamduit.co.id",
-        sub: clientId,
-        iat: Math.floor(Date.now() / 1000), // issued at claim (current time in seconds)
-      };
-
-    
+    } else {    
       // const token = jwt.sign(payload, privateKey, {
       //   algorithm: "RS256",
       //   expiresIn: 3600, // 1 hour
       // });
-
-      const dataBuffer = Buffer.from(JSON.stringify(payload), 'utf8');
     
-      const token = crypto
-        .sign("RSA-SHA256", dataBuffer, privateKey)
-        .toString("base64");
+      const token = jwt.sign(StringToSign, privateKey, { algorithm: 'RS256' });
     
       res.json({
         responseCode: "2007300",
@@ -109,14 +102,14 @@ function generateToken(req, res) {
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; // Extract token from 'Bearer <token>'
-  console.log(token);
 
   if (!token) {
-    return res.status(401).json({ responseMessage: "Access token required" });
+    return res.status(401).json({ responseMessage: "Access token required"});
   }
 
   try {
-    const decoded = jwt.verify(token, publicKey, { algorithms: ["RS256"] });
+    const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
+    
     req.user = decoded;
     next();
   } catch (err) {
